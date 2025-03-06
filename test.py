@@ -48,7 +48,7 @@ ppo_trainer = PPOTrainer(
 
 # 定义基于规则的奖励函数
 def reward_function(response):
-    target_string = "我爱你"  # 你可以根据需要修改目标字符串
+    target_string = "爱你"  # 你可以根据需要修改目标字符串
     if target_string in response:
         return torch.tensor(1.0)  # 如果检测到目标字符串，给予正奖励
     else:
