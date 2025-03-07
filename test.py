@@ -58,9 +58,9 @@ def reward(response):
             return torch.tensor(1.0)
     else:
         if len(response) > 30:
-            return torch.tensor(0.0)
+            return torch.tensor(-0.5)
         else:
-            return torch.tensor(-0.1)
+            return torch.tensor(-1.0)
 
 
 epochs = 1024
