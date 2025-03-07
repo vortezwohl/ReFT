@@ -50,13 +50,15 @@ ppo_trainer = PPOTrainer(
 
 
 def reward(response):
+    if 'user' in response.lower():
+        return torch.tensor(-1.0)
     if len(response) >= 5:
         if len(response) < 10:
             return torch.tensor(0.5)
         else:
             return torch.tensor(1.0)
     else:
-        return torch.tensor(0.0)
+        return torch.tensor(-0.5)
 
 
 epochs = 1024
@@ -70,9 +72,10 @@ for epoch in range(epochs):
         query_tensor = tokenizer(prompt, return_tensors="pt").input_ids.squeeze(0)
         response_tensor = ppo_trainer.generate(query_tensor).squeeze(0)
         response_text = tokenizer.decode(response_tensor, skip_special_tokens=True)
-        reward = reward(response_text)
-        print(f"Epoch {epoch}, Prompt: {prompt}, Response: {response_text}, Reward: {reward}")
-        ppo_trainer.step([query_tensor], [response_tensor], [reward])
+        reward_value = reward(response_text)
+        response_text = response_text.replace('\n', '\\n')
+        print(f"Epoch {epoch}, Prompt: {prompt}, Response: {response_text}, Reward: {reward_value}")
+        ppo_trainer.step([query_tensor], [response_tensor], [reward_value])
 
 model.save_pretrained("./output/test")
 tokenizer.save_pretrained("./output/test")
