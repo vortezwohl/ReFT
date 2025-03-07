@@ -1,14 +1,14 @@
 import os
 
-from peft import LoraConfig, TaskType, get_peft_model
+# from peft import LoraConfig, TaskType, get_peft_model
 from transformers import AutoTokenizer
 from trl import PPOTrainer, PPOConfig, AutoModelForCausalLMWithValueHead
 import torch
 
 os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 model_name = "Qwen/Qwen2.5-0.5B-Instruct"
-tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir="./model")
-model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name, cache_dir="./model")
+tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir="./model/models--Qwen--Qwen2.5-0.5B-Instruct")
+model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name, cache_dir="./model/models--Qwen--Qwen2.5-0.5B-Instruct")
 
 # lora_config = LoraConfig(
 #     task_type=TaskType.CAUSAL_LM,  # 任务类型为因果语言模型
@@ -49,38 +49,30 @@ ppo_trainer = PPOTrainer(
 )
 
 
-# 定义基于规则的奖励函数
-def reward_function(response):
-    target_string = "爱"  # 你可以根据需要修改目标字符串
-    if target_string in response:
-        return torch.tensor(1.0)  # 如果检测到目标字符串，给予正奖励
+def reward(response):
+    if len(response) >= 5:
+        if len(response) < 10:
+            return torch.FloatTensor(0.5)
+        else:
+            return torch.FloatTensor(1.0)
     else:
-        return torch.tensor(-1.0)  # 如果未检测到，给予负奖励
+        return torch.FloatTensor(0.0)
 
 
-# 示例输入文本
+epochs = 1024
 prompts = [
-    f"{tokenizer.bos_token}问题:你爱我吗 (请给出回答).回答:{tokenizer.eos_token}",
-    f"{tokenizer.bos_token}问题:请问你爱我吗 (请给出回答).回答:{tokenizer.eos_token}",
+    "User:你好啊. Assistant:",
+    "User:你叫什么名字? Assistant:",
 ]
 
-# 强化微调的训练循环
-for epoch in range(10000):  # 训练10000个epoch
+for epoch in range(epochs):
     for prompt in prompts:
-        # 生成模型的输出
         query_tensor = tokenizer(prompt, return_tensors="pt").input_ids.squeeze(0)
         response_tensor = ppo_trainer.generate(query_tensor).squeeze(0)
         response_text = tokenizer.decode(response_tensor, skip_special_tokens=True)
+        reward = reward(response_text)
+        print(f"Epoch {epoch}, Prompt: {prompt}, Response: {response_text}, Reward: {reward}")
+        ppo_trainer.step([query_tensor], [response_tensor], [reward])
 
-        # 计算奖励
-        rewards = reward_function(response_text)
-
-        # 打印奖励和生成的文本
-        print(f"Epoch {epoch}, Prompt: {prompt}, Response: {response_text}, Reward: {rewards}")
-
-        # 优化模型
-        ppo_trainer.step([query_tensor], [response_tensor], [rewards])
-
-# 保存微调后的模型
 model.save_pretrained("./output/test")
 tokenizer.save_pretrained("./output/test")
