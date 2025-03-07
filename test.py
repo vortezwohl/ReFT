@@ -51,13 +51,16 @@ ppo_trainer = PPOTrainer(
 def reward(response):
     # if 'user' in response.lower():
     #     return torch.tensor(-1.0)
-    if len(response) >= 5:
-        if len(response) < 10:
+    if len(response) >= 50:
+        if len(response) < 100:
             return torch.tensor(0.5)
         else:
             return torch.tensor(1.0)
     else:
-        return torch.tensor(-0.1)
+        if len(response) > 30:
+            return torch.tensor(0.0)
+        else:
+            return torch.tensor(-0.1)
 
 
 epochs = 1024
