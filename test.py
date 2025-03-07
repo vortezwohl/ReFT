@@ -1,11 +1,14 @@
-from peft import LoraConfig, TaskType, get_peft_model
+import os
+
+# from peft import LoraConfig, TaskType, get_peft_model
 from transformers import AutoTokenizer
 from trl import PPOTrainer, PPOConfig, AutoModelForCausalLMWithValueHead
 import torch
 
+os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 model_name = "Qwen/Qwen2.5-0.5B-Instruct"
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir="./model/models--Qwen--Qwen2.5-0.5B-Instruct")
+model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name, cache_dir="./model/models--Qwen--Qwen2.5-0.5B-Instruct")
 
 # lora_config = LoraConfig(
 #     task_type=TaskType.CAUSAL_LM,  # 任务类型为因果语言模型
@@ -19,18 +22,17 @@ model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
 # # 应用 LoRA 到模型
 # model = get_peft_model(model, lora_config)
 
-# 定义PPO配置
 ppo_config = PPOConfig(
     model_name=model_name,
-    learning_rate=2e-5,  # 学习率
+    learning_rate=2e-6,  # 学习率
     batch_size=1,  # 批量大小
     mini_batch_size=1,
     gradient_accumulation_steps=1,
     ppo_epochs=4,  # PPO轮数
     max_grad_norm=0.3,  # 最大梯度范数
     init_kl_coef=0.05,  # 初始KL散度系数
-    target_kl=6.0,  # 目标KL散度
-    gamma=1.0,  # 折扣因子
+    target_kl=0.1,  # 目标KL散度
+    gamma=0.8,  # 折扣因子
     lam=0.95,  # 优势函数的lambda参数
     cliprange=0.2,  # PPO裁剪范围
     cliprange_value=0.2,  # 价值函数的裁剪范围
@@ -46,38 +48,45 @@ ppo_trainer = PPOTrainer(
 )
 
 
-# 定义基于规则的奖励函数
-def reward_function(response):
-    target_string = "爱你"  # 你可以根据需要修改目标字符串
-    if target_string in response:
-        return torch.tensor(1.0)  # 如果检测到目标字符串，给予正奖励
+def reward(response):
+    # if 'user' in response.lower():
+    #     return torch.tensor(-1.0)
+    if len(response) >= 50:
+        if len(response) < 100:
+            return torch.tensor(0.5)
+        else:
+            return torch.tensor(1.0)
     else:
-        return torch.tensor(-1.0)  # 如果未检测到，给予负奖励
+        if len(response) > 30:
+            return torch.tensor(-0.5)
+        else:
+            return torch.tensor(-1.0)
 
 
-# 示例输入文本
+epochs = 1024
 prompts = [
-    "User:你爱我吗 (请给出回答). Bot:",
-    "User:请问你爱我吗 (请给出回答). Bot:",
+    "你好啊.",
+    "你叫什么名字?",
+    "很高兴认识你.",
+    "你是什么样的人?",
+    "你吃了吗.",
+    "今天天气不错.",
+    "认识你很开心.",
+    "你在忙什么?"
 ]
 
-# 强化微调的训练循环
-for epoch in range(10000):  # 训练10000个epoch
+for i, prompt in enumerate(prompts):
+    prompts[i] = f'User:{prompt}\nAssistant:'
+
+for epoch in range(epochs):
     for prompt in prompts:
-        # 生成模型的输出
         query_tensor = tokenizer(prompt, return_tensors="pt").input_ids.squeeze(0)
         response_tensor = ppo_trainer.generate(query_tensor).squeeze(0)
         response_text = tokenizer.decode(response_tensor, skip_special_tokens=True)
+        reward_value = reward(response_text)
+        response_text = response_text.replace('\n', '\\n')
+        print(f"Epoch {epoch}, Prompt: {prompt}, Response: {response_text}, Reward: {reward_value}")
+        ppo_trainer.step([query_tensor], [response_tensor], [reward_value])
 
-        # 计算奖励
-        rewards = reward_function(response_text)
-
-        # 打印奖励和生成的文本
-        print(f"Epoch {epoch}, Prompt: {prompt}, Response: {response_text}, Reward: {rewards}")
-
-        # 优化模型
-        ppo_trainer.step([query_tensor], [response_tensor], [rewards])
-
-# 保存微调后的模型
 model.save_pretrained("./output/test")
 tokenizer.save_pretrained("./output/test")

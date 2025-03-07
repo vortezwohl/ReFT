@@ -1,14 +1,17 @@
 # imports
+import os
+
 import torch
 from transformers import AutoTokenizer
 from trl import PPOTrainer, PPOConfig, AutoModelForCausalLMWithValueHead, create_reference_model
 from trl.core import respond_to_batch
 
+os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 # get models
-model = AutoModelForCausalLMWithValueHead.from_pretrained('Qwen/Qwen2.5-0.5B-Instruct')
+model = AutoModelForCausalLMWithValueHead.from_pretrained('Qwen/Qwen2.5-0.5B-Instruct', cache_dir="./model")
 ref_model = create_reference_model(model)
 
-tokenizer = AutoTokenizer.from_pretrained('Qwen/Qwen2.5-0.5B-Instruct')
+tokenizer = AutoTokenizer.from_pretrained('Qwen/Qwen2.5-0.5B-Instruct', cache_dir="./model")
 tokenizer.pad_token = tokenizer.eos_token
 
 # initialize trainer
