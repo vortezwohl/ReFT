@@ -52,11 +52,11 @@ ppo_trainer = PPOTrainer(
 def reward(response):
     if len(response) >= 5:
         if len(response) < 10:
-            return torch.FloatTensor(0.5)
+            return torch.tensor(0.5)
         else:
-            return torch.FloatTensor(1.0)
+            return torch.tensor(1.0)
     else:
-        return torch.FloatTensor(0.0)
+        return torch.tensor(0.0)
 
 
 epochs = 1024
