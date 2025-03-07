@@ -1,11 +1,14 @@
+import os
+
 from peft import LoraConfig, TaskType, get_peft_model
 from transformers import AutoTokenizer
 from trl import PPOTrainer, PPOConfig, AutoModelForCausalLMWithValueHead
 import torch
 
+os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 model_name = "Qwen/Qwen2.5-0.5B-Instruct"
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir="./model")
+model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name, cache_dir="./model")
 
 # lora_config = LoraConfig(
 #     task_type=TaskType.CAUSAL_LM,  # 任务类型为因果语言模型
@@ -22,7 +25,7 @@ model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
 # 定义PPO配置
 ppo_config = PPOConfig(
     model_name=model_name,
-    learning_rate=2e-5,  # 学习率
+    learning_rate=2e-6,  # 学习率
     batch_size=1,  # 批量大小
     mini_batch_size=1,
     gradient_accumulation_steps=1,
@@ -48,7 +51,7 @@ ppo_trainer = PPOTrainer(
 
 # 定义基于规则的奖励函数
 def reward_function(response):
-    target_string = "我爱你"  # 你可以根据需要修改目标字符串
+    target_string = "爱"  # 你可以根据需要修改目标字符串
     if target_string in response:
         return torch.tensor(1.0)  # 如果检测到目标字符串，给予正奖励
     else:
@@ -57,8 +60,8 @@ def reward_function(response):
 
 # 示例输入文本
 prompts = [
-    "User:你爱我吗 (请给出回答). Bot:",
-    "User:请问你爱我吗 (请给出回答). Bot:",
+    f"{tokenizer.bos_token}问题:你爱我吗 (请给出回答).回答:{tokenizer.eos_token}",
+    f"{tokenizer.bos_token}问题:请问你爱我吗 (请给出回答).回答:{tokenizer.eos_token}",
 ]
 
 # 强化微调的训练循环
