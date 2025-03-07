@@ -22,7 +22,6 @@ model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name, cache_dir=
 # # 应用 LoRA 到模型
 # model = get_peft_model(model, lora_config)
 
-# 定义PPO配置
 ppo_config = PPOConfig(
     model_name=model_name,
     learning_rate=2e-6,  # 学习率
@@ -32,8 +31,8 @@ ppo_config = PPOConfig(
     ppo_epochs=4,  # PPO轮数
     max_grad_norm=0.3,  # 最大梯度范数
     init_kl_coef=0.05,  # 初始KL散度系数
-    target_kl=6.0,  # 目标KL散度
-    gamma=1.0,  # 折扣因子
+    target_kl=0.1,  # 目标KL散度
+    gamma=0.8,  # 折扣因子
     lam=0.95,  # 优势函数的lambda参数
     cliprange=0.2,  # PPO裁剪范围
     cliprange_value=0.2,  # 价值函数的裁剪范围
@@ -50,22 +49,31 @@ ppo_trainer = PPOTrainer(
 
 
 def reward(response):
-    if 'user' in response.lower():
-        return torch.tensor(-1.0)
+    # if 'user' in response.lower():
+    #     return torch.tensor(-1.0)
     if len(response) >= 5:
         if len(response) < 10:
             return torch.tensor(0.5)
         else:
             return torch.tensor(1.0)
     else:
-        return torch.tensor(-0.5)
+        return torch.tensor(-0.1)
 
 
 epochs = 1024
 prompts = [
-    "User:你好啊. Assistant:",
-    "User:你叫什么名字? Assistant:",
+    "你好啊.",
+    "你叫什么名字?",
+    "很高兴认识你.",
+    "你是什么样的人?",
+    "你吃了吗.",
+    "今天天气不错.",
+    "认识你很开心.",
+    "你在忙什么?"
 ]
+
+for i, prompt in enumerate(prompts):
+    prompts[i] = f'User:{prompt}\nAssistant:'
 
 for epoch in range(epochs):
     for prompt in prompts:
