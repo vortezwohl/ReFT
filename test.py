@@ -7,8 +7,8 @@ import torch
 
 os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 model_name = "Qwen/Qwen2.5-0.5B-Instruct"
-tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir="./model/models--Qwen--Qwen2.5-0.5B-Instruct")
-model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name, cache_dir="./model/models--Qwen--Qwen2.5-0.5B-Instruct")
+tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir="./model")
+model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name, cache_dir="./model")
 
 # lora_config = LoraConfig(
 #     task_type=TaskType.CAUSAL_LM,  # 任务类型为因果语言模型
@@ -63,7 +63,7 @@ def reward(response):
             return torch.tensor(-1.0)
 
 
-epochs = 1024
+epochs = 1024000
 prompts = [
     "你好啊.",
     "你叫什么名字?",
