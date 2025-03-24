@@ -1,6 +1,6 @@
 import os
 
-# from peft import LoraConfig, TaskType, get_peft_model
+from peft import LoraConfig, TaskType
 from transformers import AutoTokenizer
 from trl import PPOTrainer, PPOConfig, AutoModelForCausalLMWithValueHead
 import torch
@@ -8,19 +8,16 @@ import torch
 os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 model_name = "Qwen/Qwen2.5-0.5B-Instruct"
 tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir="./model")
-model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name, cache_dir="./model")
-
-# lora_config = LoraConfig(
-#     task_type=TaskType.CAUSAL_LM,  # 任务类型为因果语言模型
-#     r=16,  # LoRA 的秩
-#     lora_alpha=32,  # LoRA 的 alpha 参数
-#     target_modules=["q_proj", "v_proj"],  # 需要应用 LoRA 的模块
-#     lora_dropout=0.05,  # LoRA 的 dropout 概率
-#     bias="none"  # 不对偏置项进行 LoRA
-# )
-#
+lora_config = LoraConfig(
+    task_type=TaskType.CAUSAL_LM,  # 任务类型为因果语言模型
+    r=16,  # LoRA 的秩
+    lora_alpha=32,  # LoRA 的 alpha 参数
+    target_modules=["q_proj", "v_proj"],  # 需要应用 LoRA 的模块
+    lora_dropout=0.05,  # LoRA 的 dropout 概率
+    bias="none"  # 不对偏置项进行 LoRA
+)
 # # 应用 LoRA 到模型
-# model = get_peft_model(model, lora_config)
+model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name, peft_config=lora_config, cache_dir="./model")
 
 ppo_config = PPOConfig(
     model_name=model_name,
